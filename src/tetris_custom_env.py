@@ -106,6 +106,7 @@ class TetrisEnv(Env):
         self.row = 20
         self.board = [[0 for y in range(self.col)] for x in range(self.row)]
         self.piece = self.spawn_shape()
+        self.game_over = False
 
          # Actions we can take: left, right, up, down
         self.action_space = Discrete(4)
@@ -153,10 +154,11 @@ class TetrisEnv(Env):
         if self.is_valid_position(temp):
             self.piece.y += 1
         else:
-            # collision! lock piece in place, check for complete rows, and spawn a new shape
+            # collision! lock piece in place, check for complete rows, spawn a new shape, then check if game is over
             self.board = self.merge(self.board, self.piece)
             self.remove_rows()
             self.piece = self.spawn_shape()
+            self.check_lost()
 
     def rotate(self):
         temp = self.piece
@@ -199,10 +201,12 @@ class TetrisEnv(Env):
     def check_lost(self):
         # wrong
         top_row = self.board[0]
-        for square in top_row:
-            if square == 1:
-                return True
-        return False
+        check = is_valid_position(self, self.piece)
+        if check == False and 1 in top_row:
+            self.game_over = True
+            return True
+        else:
+            return False
 
     def spawn_shape(self):
         shapes = [self.S, self.Z, self.I, self.O, self.J, self.L, self.T]
