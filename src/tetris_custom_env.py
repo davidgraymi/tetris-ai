@@ -126,6 +126,10 @@ class TetrisEnv(Env):
         if action != 2:
             self.move_down()
 
+        info = {}
+
+        return merge(self.board, self.shape), reward, self.game_over, info
+
     def render(self):
         pass
 
