@@ -104,7 +104,7 @@ class TetrisEnv(Env):
 
         self.col = 10
         self.row = 20
-        self.board = [[0 for x in range(self.col)] for y in range(self.row)]
+        self.board = [[0 for y in range(self.col)] for x in range(self.row)]
         self.piece = self.spawn_shape()
 
          # Actions we can take: left, right, up, down
@@ -118,8 +118,7 @@ class TetrisEnv(Env):
         elif action == 2:
             self.move_down()
         elif action == 3:
-            pass
-            #rotate
+            self.rotate()
 
     def render(self):
         pass
@@ -128,22 +127,47 @@ class TetrisEnv(Env):
         pass
 
     def move_left(self):
-        self.piece.x -= 1
-        if not self.is_valid_position():
-            self.piece.x += 1
+        if self.piece.x > 0:
+            temp = self.piece.x
+            temp.x -= 1
+            if self.is_valid_position(temp):
+                self.piece.x -= 1
     
     def move_right(self):
-        self.piece.x += 1
-        if not self.is_valid_position():
-            self.piece.x -= 1
+        if self.piece.x < 9:
+            temp = self.piece.x
+            temp.x += 1
+            if self.is_valid_position(temp):
+                self.piece.x += 1
 
     def move_down(self):
         self.piece.y += 1
-        # check for collision
+        # check for downard collision
 
-    def is_valid_position(self):
-        # check if the piece is in a valid position on the board
-        pass
+    def rotate(self):
+        self.piece.rotation += 1
+        piece.fix_rotation()
+        # fix x and y coordinates in the case that the rotation causes overlapping
+
+    def is_valid_position(self, shape):
+        b1 = self.board
+        merged = merge(b1, shape)
+        for y in range(self.col):
+            for x in range(self.row):
+                if merged > 1:
+                    return False
+        return True
+
+    def merge(self, board, shape):
+        x_offset, y_offset = shape.get_offsets()
+        # x_offset = len(shape.shape[shape.rotation][0])
+        # y_offset = len(shape.shape[shape.rotation])
+        new_board = [[0 for y in range(self.col)] for x in range(self.row)]
+        for i in range(len(shape.shape[shape.rotation])):
+            for j in range(len(shape.shape[shape.rotation][0])):
+                if j in range(shape.shape.x, shape.shape.x+x_offset) and i in range(shape.shape.y, shape.shape.y+y_offset):
+                    new_board[i][j] += 1
+        return new_board
     
     def check_lost(self):
         top_row = self.board[0]
