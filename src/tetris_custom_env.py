@@ -111,6 +111,7 @@ class TetrisEnv(Env):
         self.action_space = Discrete(4)
     
     def step(self, action):
+        # preform action
         if action == 0:
             self.move_left()
         elif action == 1:
@@ -119,6 +120,12 @@ class TetrisEnv(Env):
             self.move_down()
         elif action == 3:
             self.rotate()
+        
+        # after a move left, move right, or rotation move down again
+        if action != 2:
+            self.move_down()
+
+        
 
     def render(self):
         pass
@@ -128,30 +135,36 @@ class TetrisEnv(Env):
 
     def move_left(self):
         if self.piece.x > 0:
-            temp = self.piece.x
+            temp = self.piece
             temp.x -= 1
             if self.is_valid_position(temp):
                 self.piece.x -= 1
     
     def move_right(self):
         if self.piece.x < 9:
-            temp = self.piece.x
+            temp = self.piece
             temp.x += 1
             if self.is_valid_position(temp):
                 self.piece.x += 1
 
     def move_down(self):
-        self.piece.y += 1
-        # check for downard collision
+        temp = self.piece
+        temp.y += 1
+        if self.is_valid_position(temp):
+            self.piece.y += 1
+        else:
+            # collision! lock piece in place
+            self.board = self.merge(self.board, self.piece)
+            self.piece = self.spawn_shape()
 
     def rotate(self):
-        self.piece.rotation += 1
-        piece.fix_rotation()
-        # fix x and y coordinates in the case that the rotation causes overlapping
+        temp = self.piece
+        temp.rotate()
+        if is_valid_position(self, temp):
+            self.piece.rotate()
 
     def is_valid_position(self, shape):
-        b1 = self.board
-        merged = merge(b1, shape)
+        merged = self.merge(self.board, shape)
         for y in range(self.col):
             for x in range(self.row):
                 if merged > 1:
@@ -162,14 +175,17 @@ class TetrisEnv(Env):
         x_offset, y_offset = shape.get_offsets()
         # x_offset = len(shape.shape[shape.rotation][0])
         # y_offset = len(shape.shape[shape.rotation])
-        new_board = [[0 for y in range(self.col)] for x in range(self.row)]
+        new_board = board
         for i in range(len(shape.shape[shape.rotation])):
             for j in range(len(shape.shape[shape.rotation][0])):
                 if j in range(shape.shape.x, shape.shape.x+x_offset) and i in range(shape.shape.y, shape.shape.y+y_offset):
-                    new_board[i][j] += 1
+                    new_board[i][j] += shape.shape[shape.rotation][i-shape.shape.y][j-shape.shape.x]
+
+        # check for a row to be removed
         return new_board
     
     def check_lost(self):
+        # wrong
         top_row = self.board[0]
         for square in top_row:
             if square == 1:
