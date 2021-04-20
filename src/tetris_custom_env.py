@@ -153,8 +153,9 @@ class TetrisEnv(Env):
         if self.is_valid_position(temp):
             self.piece.y += 1
         else:
-            # collision! lock piece in place
+            # collision! lock piece in place, check for complete rows, and spawn a new shape
             self.board = self.merge(self.board, self.piece)
+            self.remove_rows()
             self.piece = self.spawn_shape()
 
     def rotate(self):
@@ -176,13 +177,24 @@ class TetrisEnv(Env):
         # x_offset = len(shape.shape[shape.rotation][0])
         # y_offset = len(shape.shape[shape.rotation])
         new_board = board
-        for i in range(len(shape.shape[shape.rotation])):
-            for j in range(len(shape.shape[shape.rotation][0])):
+        for i in range(len(self.col)):
+            for j in range(len(self.row)):
                 if j in range(shape.shape.x, shape.shape.x+x_offset) and i in range(shape.shape.y, shape.shape.y+y_offset):
                     new_board[i][j] += shape.shape[shape.rotation][i-shape.shape.y][j-shape.shape.x]
-
-        # check for a row to be removed
         return new_board
+    
+    def remove_rows(self):
+        for i in range(len(self.col)):
+            row_count = 0
+            for j in range(len(self.row)):
+                if self.board[i][j] == 1:
+                    row_count += 1
+                else:
+                    break
+
+                if row_count == 9:
+                    #remove row and shift rows above down
+                    pass
     
     def check_lost(self):
         # wrong
