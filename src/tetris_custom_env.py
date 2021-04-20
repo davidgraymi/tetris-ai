@@ -126,13 +126,12 @@ class TetrisEnv(Env):
         if action != 2:
             self.move_down()
 
-        
-
     def render(self):
         pass
 
     def reset(self):
         pass
+
 
     def move_left(self):
         if self.piece.x > 0:
@@ -156,7 +155,7 @@ class TetrisEnv(Env):
         else:
             # collision! lock piece in place, check for complete rows, spawn a new shape, then check if game is over
             self.board = self.merge(self.board, self.piece)
-            self.remove_rows()
+            self.fix_rows()
             self.piece = self.spawn_shape()
             self.check_lost()
 
@@ -185,7 +184,7 @@ class TetrisEnv(Env):
                     new_board[i][j] += shape.shape[shape.rotation][i-shape.shape.y][j-shape.shape.x]
         return new_board
     
-    def remove_rows(self):
+    def fix_rows(self):
         for i in range(len(self.col)):
             row_count = 0
             for j in range(len(self.row)):
@@ -195,8 +194,19 @@ class TetrisEnv(Env):
                     break
 
                 if row_count == 9:
-                    #remove row and shift rows above down
-                    pass
+                    self.board = self.remove(i)
+
+    def remove(self, index):
+        #remove row at index and shift above rows down
+        board = self.board
+        while index >= 0:
+            row = []
+            for j in range(len(self.row)):
+                row.append(board[index-1][j])
+            board[i] = row
+            index -= 1
+        board[0] = [0 for x in range(self.col)]
+        return board
     
     def check_lost(self):
         # wrong
