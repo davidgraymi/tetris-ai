@@ -44,6 +44,9 @@ class TetrisEnv(Env):
         self.O = [
             
             [[1,1],
+             [1,1]],
+
+            [[1,1],
              [1,1]]
             
             ]
@@ -108,6 +111,7 @@ class TetrisEnv(Env):
         self.piece = self.spawn_shape()
         self.game_over = False
         self.score = 0
+        self.rows_removed = 0
 
          # Actions we can take: left, right, up, down
         self.action_space = Discrete(4)
@@ -127,20 +131,23 @@ class TetrisEnv(Env):
         if action != 2:
             self.move_down()
 
+        reward = self.rows_removed
+        self.rows_removed = 0
+
         info = {}
 
-        return merge(self.board, self.shape), reward, self.game_over, info
+        # return state, reward, game over, info
+        return self.merge(self.board, self.piece), reward, self.game_over, info
 
     def render(self):
         pass
 
     def reset(self):
-        if self.game_over == True:
-            self.board = [[0 for y in range(self.col)] for x in range(self.row)]
-            self.game_over = False
-            reward -= 50
-            self.score = 0
-        pass
+        self.board = [[0 for y in range(self.col)] for x in range(self.row)]
+        self.piece = self.spawn_shape()
+        self.game_over = False
+        self.score = 0
+        # reward -= 50
 
 
     def move_left(self):
@@ -173,14 +180,14 @@ class TetrisEnv(Env):
     def rotate(self):
         temp = self.piece
         temp.rotate()
-        if is_valid_position(self, temp):
+        if self.is_valid_position(temp):
             self.piece.rotate()
 
     def is_valid_position(self, shape):
         merged = self.merge(self.board, shape)
-        for y in range(self.col):
-            for x in range(self.row):
-                if merged > 1:
+        for y in range(self.row):
+            for x in range(self.col):
+                if merged[y][x] > 1:
                     return False
         return True
 
@@ -189,16 +196,16 @@ class TetrisEnv(Env):
         # x_offset = len(shape.shape[shape.rotation][0])
         # y_offset = len(shape.shape[shape.rotation])
         new_board = board
-        for i in range(len(self.col)):
-            for j in range(len(self.row)):
-                if j in range(shape.shape.x, shape.shape.x+x_offset) and i in range(shape.shape.y, shape.shape.y+y_offset):
-                    new_board[i][j] += shape.shape[shape.rotation][i-shape.shape.y][j-shape.shape.x]
+        for i in range(self.row):
+            for j in range(self.col):
+                if j in range(shape.x, shape.x+x_offset) and i in range(shape.y, shape.y+y_offset):
+                    new_board[i][j] += shape.shape[shape.rotation][i-shape.y][j-shape.x]
         return new_board
     
     def fix_rows(self):
-        for i in range(len(self.col)):
+        for i in range(self.row):
             row_count = 0
-            for j in range(len(self.row)):
+            for j in range(self.col):
                 if self.board[i][j] == 1:
                     row_count += 1
                 else:
@@ -209,6 +216,8 @@ class TetrisEnv(Env):
 
     def remove(self, index):
         #remove row at index and shift above rows down
+        self.rows_removed += 1
+
         board = self.board
         while index >= 0:
             row = []
@@ -226,11 +235,12 @@ class TetrisEnv(Env):
         check = self.is_valid_position(self.piece)
         if check == False and (1 or 2 in top_row):
             self.game_over = True
-            self.reset()
-            return True
-        else:
-            return False
+            # self.reset()
+        #     return True
+        # else:
+        #     return False
 
     def spawn_shape(self):
         shapes = [self.S, self.Z, self.I, self.O, self.J, self.L, self.T]
-        return Piece(4, 0, random.choice(shapes))
+        letter = random.choice(shapes)
+        return Piece(4, 0, letter)
