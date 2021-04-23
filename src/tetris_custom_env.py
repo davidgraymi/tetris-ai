@@ -27,7 +27,7 @@ class TetrisEnv(Env):
             [[0,1],
              [1,1],
              [1,0]]
-            
+
             ]
 
         self.I = [
@@ -107,17 +107,19 @@ class TetrisEnv(Env):
 
         self.col = 10
         self.row = 20
-        self.board = [[0 for y in range(self.col)] for x in range(self.row)]
+        self.board = np.zeros((self.row, self.col))
+        # self.board = [[0 for x in range(self.col)] for y in range(self.row)]
         self.piece = self.spawn_shape()
         self.game_over = False
         self.score = 0
-        self.rows_removed = 0
-
+        
          # Actions we can take: left, right, up, down
         self.action_space = Discrete(4)
+        self.observation_space = Box(np.array(self.board[0][0]), np.array(self.board[-1][-1]), dtype=np.int)
     
     def step(self, action):
-        # preform action
+        #Preform action
+
         if action == 0:
             self.move_left()
         elif action == 1:
@@ -131,46 +133,56 @@ class TetrisEnv(Env):
         if action != 2:
             self.move_down()
 
-        reward = self.rows_removed
-        self.rows_removed = 0
+        reward = self.score
+        self.score = 0
 
         info = {}
 
-        # return state, reward, game over, info
-        return self.merge(self.board, self.piece), reward, self.game_over, info
+        merge = self.merge(self.board, self.piece)
 
-    def render(self):
-        pass
+        # return state, reward, game over, info
+        return merge, reward, self.game_over, info
+
+    def render(self, state):
+        #Render
+
+        print("\n")
+        for x in range(len(state)):
+            print(state[x])
+        print("\n")
 
     def reset(self):
-        self.board = [[0 for y in range(self.col)] for x in range(self.row)]
+        #Reset
+
+        # self.board = [[0 for x in range(self.col)] for y in range(self.row)]
+        self.board = np.zeros((self.row, self.col))
         self.piece = self.spawn_shape()
         self.game_over = False
         self.score = 0
-        # reward -= 50
+        return self.merge(self.board, self.piece)
 
 
     def move_left(self):
-        if self.piece.x > 0:
-            temp = self.piece
-            temp.x -= 1
-            if self.is_valid_position(temp):
-                self.piece.x -= 1
+        #Move left
+
+        self.piece.x -= 1
+        if not self.is_valid_position(self.piece):
+            self.piece.x += 1
     
     def move_right(self):
-        if self.piece.x < 9:
-            temp = self.piece
-            temp.x += 1
-            if self.is_valid_position(temp):
-                self.piece.x += 1
+        #Move right
+
+        self.piece.x += 1
+        if not self.is_valid_position(self.piece):
+            self.piece.x -= 1
 
     def move_down(self):
-        temp = self.piece
-        temp.y += 1
-        if self.is_valid_position(temp):
-            self.piece.y += 1
-        else:
+        #Move down
+
+        self.piece.y += 1
+        if not self.is_valid_position(self.piece):
             # collision! lock piece in place, check for complete rows, spawn a new shape, then check if game is over
+            self.piece.y -= 1
             self.score += 1
             self.board = self.merge(self.board, self.piece)
             self.fix_rows()
@@ -178,13 +190,30 @@ class TetrisEnv(Env):
             self.check_lost()
 
     def rotate(self):
-        temp = self.piece
-        temp.rotate()
+        #Rotate
+
+        temp = Piece(self.piece.x, self.piece.y, self.piece.shape, self.piece.rotation)
+        temp.rotate_clockwise()
         if self.is_valid_position(temp):
-            self.piece.rotate()
+            self.piece.rotate_clockwise()
 
     def is_valid_position(self, shape):
+        #Checks if the position of the current piece is valid
+
+        x_offset, y_offset = shape.get_offsets()
+        lower_edge = shape.y + y_offset - 1
+        left_edge = shape.x
+        right_edge = shape.x + x_offset - 1
+
+        if lower_edge > 19:
+            return False
+        if left_edge < 0:
+            return False
+        if right_edge > 9:
+            return False
+        
         merged = self.merge(self.board, shape)
+
         for y in range(self.row):
             for x in range(self.col):
                 if merged[y][x] > 1:
@@ -192,10 +221,10 @@ class TetrisEnv(Env):
         return True
 
     def merge(self, board, shape):
+        #Merges the board and shape into one array
+
         x_offset, y_offset = shape.get_offsets()
-        # x_offset = len(shape.shape[shape.rotation][0])
-        # y_offset = len(shape.shape[shape.rotation])
-        new_board = board
+        new_board = np.copy(board)
         for i in range(self.row):
             for j in range(self.col):
                 if j in range(shape.x, shape.x+x_offset) and i in range(shape.y, shape.y+y_offset):
@@ -203,6 +232,8 @@ class TetrisEnv(Env):
         return new_board
     
     def fix_rows(self):
+        # Checks if a complete row exists
+
         for i in range(self.row):
             row_count = 0
             for j in range(self.col):
@@ -215,32 +246,34 @@ class TetrisEnv(Env):
                     self.board = self.remove(i)
 
     def remove(self, index):
-        #remove row at index and shift above rows down
-        self.rows_removed += 1
+        #Removes row at index and shifts above rows down
 
-        board = self.board
-        while index >= 0:
-            row = []
-            for j in range(len(self.row)):
-                row.append(board[index-1][j])
-            board[i] = row
-            index -= 1
-        board[0] = [0 for x in range(self.col)]
         self.score += 10
+
+        # print("reomve row:{}".format(index))
+        # board = self.board
+        board = np.copy(self.board)
+        while index >= 0:
+            # row = []
+            row = np.copy(board[index-1])
+            # for j in range(self.row):
+            #     row.append(board[index-1][j])
+            board[index] = row
+            index -= 1
+        # board[0] = [0 for x in range(self.col)]
+        board[0] = np.zeros(self.col)
         return board
     
     def check_lost(self):
-        #check if collision happens at the top row when a new piece spawns
-        top_row = self.board[0]
-        check = self.is_valid_position(self.piece)
-        if check == False and (1 or 2 in top_row):
+        #Checks if the concrete pieces have reaches the top of the board
+
+        top_row = np.copy(self.board[0])
+        if max(top_row) >= 1:
             self.game_over = True
-            # self.reset()
-        #     return True
-        # else:
-        #     return False
 
     def spawn_shape(self):
+        #Spawns a new shape at the top of the board
+
         shapes = [self.S, self.Z, self.I, self.O, self.J, self.L, self.T]
         letter = random.choice(shapes)
         return Piece(4, 0, letter)
