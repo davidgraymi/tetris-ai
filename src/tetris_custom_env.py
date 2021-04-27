@@ -8,7 +8,7 @@ import numpy as np
 class TetrisEnv(Env):
     def __init__(self):
 
-        self.S = [
+        S = [
             
             [[0,1,1],
               [1,1,0]],
@@ -19,7 +19,7 @@ class TetrisEnv(Env):
               
             ]
 
-        self.Z = [
+        Z = [
 
             [[1,1,0],
              [0,1,1]],
@@ -30,7 +30,7 @@ class TetrisEnv(Env):
 
             ]
 
-        self.I = [
+        I = [
             
             [[1,1,1,1]],
 
@@ -41,7 +41,7 @@ class TetrisEnv(Env):
             
             ]
 
-        self.O = [
+        O = [
             
             [[1,1],
              [1,1]],
@@ -51,7 +51,7 @@ class TetrisEnv(Env):
             
             ]
 
-        self.J = [
+        J = [
             
             [[1,0,0],
              [1,1,1]],
@@ -69,7 +69,7 @@ class TetrisEnv(Env):
             
             ]
 
-        self.L = [
+        L = [
             
             [[0,0,1],
              [1,1,1]],
@@ -87,7 +87,7 @@ class TetrisEnv(Env):
             
             ]
 
-        self.T = [
+        T = [
             
             [[0,1,0],
              [1,1,1]],
@@ -105,17 +105,23 @@ class TetrisEnv(Env):
             
             ]
 
+        self.shapes = [S, Z, I, O, J, L, T]
+
+        self.block_placed = 0
+        self.rows_removed = 0
+
         self.col = 10
         self.row = 20
         self.board = np.zeros((self.row, self.col))
         # self.board = [[0 for x in range(self.col)] for y in range(self.row)]
-        self.piece = self.spawn_shape()
+        self.current_piece = self.spawn_shape()
+        self.next_piece = self.spawn_shape()
         self.game_over = False
-        self.score = 0
         
          # Actions we can take: left, right, up, down
         self.action_space = Discrete(4)
-        self.observation_space = Box(np.array(self.board[0][0]), np.array(self.board[-1][-1]), dtype=np.int)
+        self.observation_space = Box(low=0, high=201, shape=(1,6), dtype=np.int)
+        # self.observation_space = Box(np.array(self.board[0][0]), np.array(self.board[-1][-1]), dtype=np.int)
     
     def step(self, action):
         #Preform action
@@ -133,15 +139,17 @@ class TetrisEnv(Env):
         if action != 2:
             self.move_down()
 
-        reward = self.score
-        self.score = 0
-
         info = {}
 
-        merge = self.merge(self.board, self.piece)
+        game_state = self.get_game_state()
+
+        reward = self.get_reward()
+
+        # merge = self.merge(self.board, self.current_piece)
+        # self.render(merge)
 
         # return state, reward, game over, info
-        return merge, reward, self.game_over, info
+        return game_state, reward, self.game_over, info
 
     def render(self, state):
         #Render
@@ -156,46 +164,49 @@ class TetrisEnv(Env):
 
         # self.board = [[0 for x in range(self.col)] for y in range(self.row)]
         self.board = np.zeros((self.row, self.col))
-        self.piece = self.spawn_shape()
+        self.current_piece = self.spawn_shape()
+        self.next_piece = self.spawn_shape()
         self.game_over = False
-        self.score = 0
-        return self.merge(self.board, self.piece)
+        self.block_placed = 0
+        self.rows_removed = 0
+        return self.get_game_state()
 
 
     def move_left(self):
         #Move left
 
-        self.piece.x -= 1
-        if not self.is_valid_position(self.piece):
-            self.piece.x += 1
+        self.current_piece.x -= 1
+        if not self.is_valid_position(self.current_piece):
+            self.current_piece.x += 1
     
     def move_right(self):
         #Move right
 
-        self.piece.x += 1
-        if not self.is_valid_position(self.piece):
-            self.piece.x -= 1
+        self.current_piece.x += 1
+        if not self.is_valid_position(self.current_piece):
+            self.current_piece.x -= 1
 
     def move_down(self):
         #Move down
 
-        self.piece.y += 1
-        if not self.is_valid_position(self.piece):
+        self.current_piece.y += 1
+        if not self.is_valid_position(self.current_piece):
             # collision! lock piece in place, check for complete rows, spawn a new shape, then check if game is over
-            self.piece.y -= 1
-            self.score += 1
-            self.board = self.merge(self.board, self.piece)
+            self.current_piece.y -= 1
+            self.board = self.merge(self.board, self.current_piece)
+            self.block_placed += 1
             self.fix_rows()
-            self.piece = self.spawn_shape()
+            self.current_piece = self.next_piece
+            self.next_piece = self.spawn_shape()
             self.check_lost()
 
     def rotate(self):
         #Rotate
 
-        temp = Piece(self.piece.x, self.piece.y, self.piece.shape, self.piece.rotation)
+        temp = Piece(self.current_piece.x, self.current_piece.y, self.current_piece.shape, self.current_piece.rotation)
         temp.rotate_clockwise()
         if self.is_valid_position(temp):
-            self.piece.rotate_clockwise()
+            self.current_piece.rotate_clockwise()
 
     def is_valid_position(self, shape):
         #Checks if the position of the current piece is valid
@@ -248,19 +259,12 @@ class TetrisEnv(Env):
     def remove(self, index):
         #Removes row at index and shifts above rows down
 
-        self.score += 10
-
-        # print("reomve row:{}".format(index))
-        # board = self.board
+        self.rows_removed += 1
         board = np.copy(self.board)
         while index >= 0:
-            # row = []
             row = np.copy(board[index-1])
-            # for j in range(self.row):
-            #     row.append(board[index-1][j])
             board[index] = row
             index -= 1
-        # board[0] = [0 for x in range(self.col)]
         board[0] = np.zeros(self.col)
         return board
     
@@ -273,7 +277,96 @@ class TetrisEnv(Env):
 
     def spawn_shape(self):
         #Spawns a new shape at the top of the board
+        
+        i = len(self.shapes) - 1
+        index = random.randint(0,i)
+        letter = self.shapes[index]
+        # letter = random.choice(self.shapes)
+        return Piece(4, 0, letter, index)
 
-        shapes = [self.S, self.Z, self.I, self.O, self.J, self.L, self.T]
-        letter = random.choice(shapes)
-        return Piece(4, 0, letter)
+    def get_reward(self):
+        # reward function
+
+        reward = self.block_placed + (self.rows_removed**2 * self.col)
+        if self.game_over:
+            reward -= 1
+        self.block_placed = 0
+        self.rows_removed = 0
+        return reward
+
+    def get_bumpiness(self):
+        bumpiness = 0
+        for i in range(self.col-1):
+            for j in range(self.row):
+                if self.board[j,i] >= 1:
+                    height_row_1 = self.row - j
+                    break
+                height_row_1 = 0
+            for j in range(self.row):
+                if self.board[j,i+1] >= 1:
+                    height_row_2 = self.row - j
+                    break
+                height_row_2 = 0
+            difference = abs(height_row_1 - height_row_2)
+            # print(height_row_1, "-", height_row_2, "=", difference)
+            bumpiness += difference
+        return bumpiness
+            
+    def get_total_height(self):
+        total_height = 0
+        for i in range(self.col):
+            for j in range(self.row):
+                if self.board[j,i] >= 1:
+                    height = self.row - j
+                    break
+                height = 0
+            total_height += height
+        return total_height
+
+    def get_holes(self):
+        holes = 0
+        for i in range(self.row):
+            for j in range(self.col):
+                if i == 0:
+                    break
+                if self.board[i,j] == 0:
+                    if j == 9:
+                        if i == 19:
+                            # bottom right corner
+                            if self.board[i-1,j] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1:
+                                holes += 1
+                        else:
+                            # right side
+                            if self.board[i-1,j] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1 and self.board[i+1,j] == 1 and self.board[i+1,j-1] == 1:
+                                holes += 1
+                    elif j == 0:
+                        if i == 19:
+                            # bottom left corner
+                            if self.board[i-1,j] == 1 and self.board[i,j+1] == 1 and self.board[i-1,j+1] == 1:
+                                holes += 1
+                        else:
+                            # left side
+                            if self.board[i-1,j] == 1 and self.board[i,j+1] == 1 and self.board[i-1,j+1] == 1 and self.board[i+1,j] == 1 and self.board[i+1,j+1] == 1:
+                                holes += 1
+                    else:
+                        if i == 19:
+                            # bottom
+                            if self.board[i-1,j] == 1 and self.board[i,j+1] == 1 and self.board[i-1,j+1] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1:
+                                holes +=1
+                        else:
+                            # everything else
+                            if self.board[i-1,j] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1 and self.board[i+1,j] == 1 and self.board[i,j+1] == 1 and self.board[i+1,j+1] == 1 and self.board[i-1,j+1] == 1 and self.board[i+1,j-1] == 1:
+                                holes +=1
+        return holes
+
+    def get_current_piece(self):
+        current_piece = self.current_piece.index + self.current_piece.rotation
+        return current_piece
+    
+    def get_next_piece(self):
+        next_piece = self.next_piece.index + self.next_piece.rotation
+        return next_piece
+
+    def get_game_state(self):
+        game_state = [self.rows_removed, self.get_holes(), self.get_bumpiness(), self.get_total_height(), self.get_current_piece(), self.get_next_piece()]
+        return game_state

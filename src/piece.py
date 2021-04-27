@@ -1,8 +1,9 @@
 class Piece(object):
-    def __init__(self, x, y, shape, rotation=0):
+    def __init__(self, x, y, shape, index, rotation=0):
         self.x = x
         self.y = y
         self.shape = shape
+        self.index = index
         self.rotation = rotation
 
     def rotate_clockwise(self):
