@@ -3,9 +3,19 @@ from piece import Piece
 from gym import Env
 from gym.spaces import Discrete, Box
 import numpy as np
+import cv2
+from PIL import Image
 
 
 class TetrisEnv(Env):
+
+    COLORS = {
+        0: (255, 255, 255),
+        1: (247, 64, 99),
+        2: (0, 167, 247),
+        3: (0, 167, 247),
+    }
+
     def __init__(self):
 
         S = [
@@ -110,6 +120,8 @@ class TetrisEnv(Env):
         self.block_placed = 0
         self.rows_removed = 0
 
+        self.score = 0
+
         self.col = 10
         self.row = 20
         self.board = np.zeros((self.row, self.col))
@@ -120,7 +132,7 @@ class TetrisEnv(Env):
         
          # Actions we can take: left, right, up, down
         self.action_space = Discrete(4)
-        self.observation_space = Box(low=0, high=201, shape=(1,6), dtype=np.int)
+        self.observation_space = Box(low=0, high=200, shape=(1,6), dtype=np.int)
         # self.observation_space = Box(np.array(self.board[0][0]), np.array(self.board[-1][-1]), dtype=np.int)
     
     def step(self, action):
@@ -135,7 +147,7 @@ class TetrisEnv(Env):
         elif action == 3:
             self.rotate()
         
-        # after a move left, move right, or rotation move down again
+        # after a move left, move right, or rotation move down again if possible
         if action != 2:
             self.move_down()
 
@@ -145,19 +157,33 @@ class TetrisEnv(Env):
 
         reward = self.get_reward()
 
+        self.score += reward
+
         # merge = self.merge(self.board, self.current_piece)
         # self.render(merge)
 
         # return state, reward, game over, info
         return game_state, reward, self.game_over, info
 
-    def render(self, state):
-        #Render
+    # def render(self, state):
+    #     #Render
 
-        print("\n")
-        for x in range(len(state)):
-            print(state[x])
-        print("\n")
+    #     print("\n")
+    #     for x in range(len(state)):
+    #         print(state[x])
+    #     print("\n")
+
+    def render(self):
+        '''Renders the current board'''
+        img = [TetrisEnv.COLORS[p] for row in self.merge(self.board, self.current_piece) for p in row]
+        img = np.array(img).reshape(self.row, self.col, 3).astype(np.uint8)
+        img = img[..., ::-1] # Convert RRG to BGR (used by cv2)
+        img = Image.fromarray(img, 'RGB')
+        img = img.resize((self.col * 25, self.row * 25))
+        img = np.array(img)
+        cv2.putText(img, str(self.score), (22, 22), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 1)
+        cv2.imshow('image', np.array(img))
+        cv2.waitKey(1)
 
     def reset(self):
         #Reset
@@ -169,6 +195,7 @@ class TetrisEnv(Env):
         self.game_over = False
         self.block_placed = 0
         self.rows_removed = 0
+        self.score = 0
         return self.get_game_state()
 
 
@@ -196,14 +223,14 @@ class TetrisEnv(Env):
             self.board = self.merge(self.board, self.current_piece)
             self.block_placed += 1
             self.fix_rows()
+            self.check_lost()
             self.current_piece = self.next_piece
             self.next_piece = self.spawn_shape()
-            self.check_lost()
 
     def rotate(self):
         #Rotate
 
-        temp = Piece(self.current_piece.x, self.current_piece.y, self.current_piece.shape, self.current_piece.rotation)
+        temp = Piece(self.current_piece.x, self.current_piece.y, self.current_piece.shape, self.current_piece.index, self.current_piece.rotation)
         temp.rotate_clockwise()
         if self.is_valid_position(temp):
             self.current_piece.rotate_clockwise()
@@ -212,9 +239,9 @@ class TetrisEnv(Env):
         #Checks if the position of the current piece is valid
 
         x_offset, y_offset = shape.get_offsets()
-        lower_edge = shape.y + y_offset - 1
+        lower_edge = shape.y + y_offset
         left_edge = shape.x
-        right_edge = shape.x + x_offset - 1
+        right_edge = shape.x + x_offset
 
         if lower_edge > 19:
             return False
@@ -238,7 +265,7 @@ class TetrisEnv(Env):
         new_board = np.copy(board)
         for i in range(self.row):
             for j in range(self.col):
-                if j in range(shape.x, shape.x+x_offset) and i in range(shape.y, shape.y+y_offset):
+                if j in range(shape.x, shape.x+x_offset+1) and i in range(shape.y, shape.y+y_offset+1):
                     new_board[i][j] += shape.shape[shape.rotation][i-shape.y][j-shape.x]
         return new_board
     
@@ -323,41 +350,41 @@ class TetrisEnv(Env):
             total_height += height
         return total_height
 
-    def get_holes(self):
-        holes = 0
-        for i in range(self.row):
-            for j in range(self.col):
-                if i == 0:
-                    break
-                if self.board[i,j] == 0:
-                    if j == 9:
-                        if i == 19:
-                            # bottom right corner
-                            if self.board[i-1,j] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1:
-                                holes += 1
-                        else:
-                            # right side
-                            if self.board[i-1,j] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1 and self.board[i+1,j] == 1 and self.board[i+1,j-1] == 1:
-                                holes += 1
-                    elif j == 0:
-                        if i == 19:
-                            # bottom left corner
-                            if self.board[i-1,j] == 1 and self.board[i,j+1] == 1 and self.board[i-1,j+1] == 1:
-                                holes += 1
-                        else:
-                            # left side
-                            if self.board[i-1,j] == 1 and self.board[i,j+1] == 1 and self.board[i-1,j+1] == 1 and self.board[i+1,j] == 1 and self.board[i+1,j+1] == 1:
-                                holes += 1
-                    else:
-                        if i == 19:
-                            # bottom
-                            if self.board[i-1,j] == 1 and self.board[i,j+1] == 1 and self.board[i-1,j+1] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1:
-                                holes +=1
-                        else:
-                            # everything else
-                            if self.board[i-1,j] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1 and self.board[i+1,j] == 1 and self.board[i,j+1] == 1 and self.board[i+1,j+1] == 1 and self.board[i-1,j+1] == 1 and self.board[i+1,j-1] == 1:
-                                holes +=1
-        return holes
+    # def get_holes(self):
+    #     holes = 0
+    #     for i in range(self.row):
+    #         for j in range(self.col):
+    #             if i == 0:
+    #                 break
+    #             if self.board[i,j] == 0:
+    #                 if j == 9:
+    #                     if i == 19:
+    #                         # bottom right corner
+    #                         if self.board[i-1,j] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1:
+    #                             holes += 1
+    #                     else:
+    #                         # right side
+    #                         if self.board[i-1,j] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1 and self.board[i+1,j] == 1 and self.board[i+1,j-1] == 1:
+    #                             holes += 1
+    #                 elif j == 0:
+    #                     if i == 19:
+    #                         # bottom left corner
+    #                         if self.board[i-1,j] == 1 and self.board[i,j+1] == 1 and self.board[i-1,j+1] == 1:
+    #                             holes += 1
+    #                     else:
+    #                         # left side
+    #                         if self.board[i-1,j] == 1 and self.board[i,j+1] == 1 and self.board[i-1,j+1] == 1 and self.board[i+1,j] == 1 and self.board[i+1,j+1] == 1:
+    #                             holes += 1
+    #                 else:
+    #                     if i == 19:
+    #                         # bottom
+    #                         if self.board[i-1,j] == 1 and self.board[i,j+1] == 1 and self.board[i-1,j+1] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1:
+    #                             holes +=1
+    #                     else:
+    #                         # everything else
+    #                         if self.board[i-1,j] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1 and self.board[i+1,j] == 1 and self.board[i,j+1] == 1 and self.board[i+1,j+1] == 1 and self.board[i-1,j+1] == 1 and self.board[i+1,j-1] == 1:
+    #                             holes +=1
+    #     return holes
 
     def get_current_piece(self):
         current_piece = self.current_piece.index + self.current_piece.rotation
@@ -367,6 +394,24 @@ class TetrisEnv(Env):
         next_piece = self.next_piece.index + self.next_piece.rotation
         return next_piece
 
+    def _number_of_holes(self, board):
+        '''Number of holes in the board (empty sqquare with at least one block above it)'''
+        holes = 0
+
+        for col in zip(*board):
+            i = 0
+            while i < self.row and col[i] != 1:
+                i += 1
+            holes += len([x for x in col[i+1:] if x == 0])
+
+        return holes
+
     def get_game_state(self):
-        game_state = [self.rows_removed, self.get_holes(), self.get_bumpiness(), self.get_total_height(), self.get_current_piece(), self.get_next_piece()]
+        lines = self.rows_removed
+        holes = self._number_of_holes(self.board)
+        bumpiness = self.get_bumpiness()
+        height = self.get_total_height()
+        # current_piece = self.get_current_piece()
+        # next_piece = self.get_next_piece()
+        game_state = [lines, holes, bumpiness, height]
         return game_state

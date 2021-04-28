@@ -12,10 +12,10 @@ from tetris_custom_env import TetrisEnv
 def build_model(actions, states):
     model = Sequential()
     # model.add(Flatten(input_shape=(1,20,10)))
-    model.add(Flatten(input_shape=(1,6)))
+    model.add(Flatten(input_shape=(1,4)))
     model.add(Dense(32, activation='relu'))
     model.add(Dense(32, activation='relu'))
-    model.add(Dense(actions, activation='linear'))
+    model.add(Dense(actions, activation='softmax'))
     return model
 
 def build_agent(model, actions):
@@ -25,7 +25,7 @@ def build_agent(model, actions):
     return dqn
 
 def main():
-    filepath = "agent_gs_1.hdf5"
+    filepath = "agent_gs_2.hdf5"
     env = TetrisEnv()
 
     actions = env.action_space.n
