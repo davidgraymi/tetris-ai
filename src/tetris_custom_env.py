@@ -9,6 +9,103 @@ from PIL import Image
 
 class TetrisEnv(Env):
 
+    S = [
+            
+        [[0,1,1],
+         [1,1,0]],
+
+        [[1,0],
+         [1,1],
+         [0,1]]
+            
+        ]
+
+    Z = [
+
+        [[1,1,0],
+        [0,1,1]],
+
+        [[0,1],
+         [1,1],
+         [1,0]]
+
+        ]
+
+    I = [
+        
+        [[1,1,1,1]],
+
+        [[1],
+         [1],
+         [1],
+         [1],]
+        
+        ]
+
+    O = [
+        
+        [[1,1],
+         [1,1]],
+
+        [[1,1],
+         [1,1]]
+        
+        ]
+
+    J = [
+        
+        [[1,0,0],
+         [1,1,1]],
+
+        [[1,1],
+         [1,0],
+         [1,0]],
+
+        [[1,1,1],
+         [0,0,1]],
+
+        [[0,1],
+         [0,1],
+         [1,1]]
+        
+        ]
+
+    L = [
+        
+        [[0,0,1],
+         [1,1,1]],
+
+        [[1,0],
+         [1,0],
+         [1,1]],
+
+        [[1,1,1],
+         [1,0,0]],
+
+        [[1,1],
+         [0,1],
+         [0,1]]
+        
+        ]
+
+    T = [
+        
+        [[0,1,0],
+         [1,1,1]],
+
+        [[1,0],
+         [1,1],
+         [1,0]],
+
+        [[1,1,1],
+         [0,1,0]],
+
+        [[0,1],
+         [1,1],
+         [0,1]]
+        
+        ]
+
     COLORS = {
         0: (255, 255, 255),
         1: (247, 64, 99),
@@ -16,124 +113,27 @@ class TetrisEnv(Env):
         3: (0, 167, 247),
     }
 
-    def __init__(self):
+    def __init__(self, render=False):
 
-        S = [
-            
-            [[0,1,1],
-              [1,1,0]],
-
-             [[1,0],
-              [1,1],
-              [0,1]]
-              
-            ]
-
-        Z = [
-
-            [[1,1,0],
-             [0,1,1]],
-
-            [[0,1],
-             [1,1],
-             [1,0]]
-
-            ]
-
-        I = [
-            
-            [[1,1,1,1]],
-
-            [[1],
-             [1],
-             [1],
-             [1],]
-            
-            ]
-
-        O = [
-            
-            [[1,1],
-             [1,1]],
-
-            [[1,1],
-             [1,1]]
-            
-            ]
-
-        J = [
-            
-            [[1,0,0],
-             [1,1,1]],
-
-            [[1,1],
-             [1,0],
-             [1,0]],
-
-            [[1,1,1],
-             [0,0,1]],
-
-            [[0,1],
-             [0,1],
-             [1,1]]
-            
-            ]
-
-        L = [
-            
-            [[0,0,1],
-             [1,1,1]],
-
-            [[1,0],
-             [1,0],
-             [1,1]],
-
-            [[1,1,1],
-             [1,0,0]],
-
-            [[1,1],
-             [0,1],
-             [0,1]]
-            
-            ]
-
-        T = [
-            
-            [[0,1,0],
-             [1,1,1]],
-
-            [[1,0],
-             [1,1],
-             [1,0]],
-
-            [[1,1,1],
-             [0,1,0]],
-
-            [[0,1],
-             [1,1],
-             [0,1]]
-            
-            ]
-
-        self.shapes = [S, Z, I, O, J, L, T]
-
-        self.block_placed = 0
-        self.rows_removed = 0
-
-        self.score = 0
-
+        self.renderer = render
+        self.shapes = [TetrisEnv.S, TetrisEnv.Z, TetrisEnv.I, TetrisEnv.O, TetrisEnv.J, TetrisEnv.L, TetrisEnv.T]
         self.col = 10
         self.row = 20
         self.board = np.zeros((self.row, self.col))
         # self.board = [[0 for x in range(self.col)] for y in range(self.row)]
         self.current_piece = self.spawn_shape()
         self.next_piece = self.spawn_shape()
+
+        self.block_placed = 0
+        self.rows_removed = 0
+        self.score = 0
         self.game_over = False
         
          # Actions we can take: left, right, up, down
         self.action_space = Discrete(4)
-        self.observation_space = Box(low=0, high=200, shape=(1,6), dtype=np.int)
-        # self.observation_space = Box(np.array(self.board[0][0]), np.array(self.board[-1][-1]), dtype=np.int)
+        high = np.array([4, 20, 100, 150, 20, self.col, self.row])
+        low = np.zeros(7)
+        self.observation_space = Box(low, high, dtype=np.int)
     
     def step(self, action):
         #Preform action
@@ -151,16 +151,15 @@ class TetrisEnv(Env):
         if action != 2:
             self.move_down()
 
+        if self.renderer:
+            self.render()
+
         info = {}
 
         game_state = self.get_game_state()
 
         reward = self.get_reward()
-
         self.score += reward
-
-        # merge = self.merge(self.board, self.current_piece)
-        # self.render(merge)
 
         # return state, reward, game over, info
         return game_state, reward, self.game_over, info
@@ -174,7 +173,8 @@ class TetrisEnv(Env):
     #     print("\n")
 
     def render(self):
-        '''Renders the current board'''
+        # Renders the current board
+
         img = [TetrisEnv.COLORS[p] for row in self.merge(self.board, self.current_piece) for p in row]
         img = np.array(img).reshape(self.row, self.col, 3).astype(np.uint8)
         img = img[..., ::-1] # Convert RRG to BGR (used by cv2)
@@ -192,10 +192,10 @@ class TetrisEnv(Env):
         self.board = np.zeros((self.row, self.col))
         self.current_piece = self.spawn_shape()
         self.next_piece = self.spawn_shape()
-        self.game_over = False
         self.block_placed = 0
         self.rows_removed = 0
         self.score = 0
+        self.game_over = False
         return self.get_game_state()
 
 
@@ -269,31 +269,48 @@ class TetrisEnv(Env):
                     new_board[i][j] += shape.shape[shape.rotation][i-shape.y][j-shape.x]
         return new_board
     
+    # def fix_rows(self):
+    #     # Checks if a complete row exists
+
+    #     for i in range(self.row):
+    #         row_count = 0
+    #         for j in range(self.col):
+    #             if self.board[i][j] == 1:
+    #                 row_count += 1
+    #             else:
+    #                 break
+
+    #             if row_count == 9:
+    #                 self.board = self.remove(i)
+
     def fix_rows(self):
         # Checks if a complete row exists
 
         for i in range(self.row):
-            row_count = 0
-            for j in range(self.col):
-                if self.board[i][j] == 1:
-                    row_count += 1
-                else:
-                    break
-
-                if row_count == 9:
-                    self.board = self.remove(i)
+            if 0 not in self.board[i]:
+                self.remove(i)
 
     def remove(self, index):
         #Removes row at index and shifts above rows down
 
         self.rows_removed += 1
-        board = np.copy(self.board)
         while index >= 0:
-            row = np.copy(board[index-1])
-            board[index] = row
+            row = np.copy(self.board[index-1])
+            self.board[index] = row
             index -= 1
-        board[0] = np.zeros(self.col)
-        return board
+        self.board[0] = np.zeros(self.col)
+
+    # def remove(self, index):
+    #     #Removes row at index and shifts above rows down
+
+    #     self.rows_removed += 1
+    #     board = np.copy(self.board)
+    #     while index >= 0:
+    #         row = np.copy(board[index-1])
+    #         board[index] = row
+    #         index -= 1
+    #     board[0] = np.zeros(self.col)
+    #     return board
     
     def check_lost(self):
         #Checks if the concrete pieces have reaches the top of the board
@@ -321,84 +338,91 @@ class TetrisEnv(Env):
         self.rows_removed = 0
         return reward
 
-    def get_bumpiness(self):
-        bumpiness = 0
-        for i in range(self.col-1):
-            for j in range(self.row):
-                if self.board[j,i] >= 1:
-                    height_row_1 = self.row - j
-                    break
-                height_row_1 = 0
-            for j in range(self.row):
-                if self.board[j,i+1] >= 1:
-                    height_row_2 = self.row - j
-                    break
-                height_row_2 = 0
-            difference = abs(height_row_1 - height_row_2)
-            # print(height_row_1, "-", height_row_2, "=", difference)
-            bumpiness += difference
-        return bumpiness
-            
-    def get_total_height(self):
-        total_height = 0
-        for i in range(self.col):
-            for j in range(self.row):
-                if self.board[j,i] >= 1:
-                    height = self.row - j
-                    break
-                height = 0
-            total_height += height
-        return total_height
+    # def get_bumpiness(self):
 
-    # def get_holes(self):
-    #     holes = 0
-    #     for i in range(self.row):
-    #         for j in range(self.col):
-    #             if i == 0:
+    #     bumpiness = 0
+    #     for i in range(self.col-1):
+    #         for j in range(self.row):
+    #             if self.board[j,i] >= 1:
+    #                 height_row_1 = self.row - j
     #                 break
-    #             if self.board[i,j] == 0:
-    #                 if j == 9:
-    #                     if i == 19:
-    #                         # bottom right corner
-    #                         if self.board[i-1,j] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1:
-    #                             holes += 1
-    #                     else:
-    #                         # right side
-    #                         if self.board[i-1,j] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1 and self.board[i+1,j] == 1 and self.board[i+1,j-1] == 1:
-    #                             holes += 1
-    #                 elif j == 0:
-    #                     if i == 19:
-    #                         # bottom left corner
-    #                         if self.board[i-1,j] == 1 and self.board[i,j+1] == 1 and self.board[i-1,j+1] == 1:
-    #                             holes += 1
-    #                     else:
-    #                         # left side
-    #                         if self.board[i-1,j] == 1 and self.board[i,j+1] == 1 and self.board[i-1,j+1] == 1 and self.board[i+1,j] == 1 and self.board[i+1,j+1] == 1:
-    #                             holes += 1
-    #                 else:
-    #                     if i == 19:
-    #                         # bottom
-    #                         if self.board[i-1,j] == 1 and self.board[i,j+1] == 1 and self.board[i-1,j+1] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1:
-    #                             holes +=1
-    #                     else:
-    #                         # everything else
-    #                         if self.board[i-1,j] == 1 and self.board[i,j-1] == 1 and self.board[i-1,j-1] == 1 and self.board[i+1,j] == 1 and self.board[i,j+1] == 1 and self.board[i+1,j+1] == 1 and self.board[i-1,j+1] == 1 and self.board[i+1,j-1] == 1:
-    #                             holes +=1
-    #     return holes
+    #             height_row_1 = 0
+    #         for j in range(self.row):
+    #             if self.board[j,i+1] >= 1:
+    #                 height_row_2 = self.row - j
+    #                 break
+    #             height_row_2 = 0
+    #         difference = abs(height_row_1 - height_row_2)
+    #         # print(height_row_1, "-", height_row_2, "=", difference)
+    #         bumpiness += difference
+    #     return bumpiness
+
+    def _bumpiness(self):
+        '''Sum of the differences of heights between pair of columns'''
+        total_bumpiness = 0
+        max_bumpiness = 0
+        min_ys = []
+
+        for col in zip(*self.board):
+            i = 0
+            while i < self.row and col[i] != 1:
+                i += 1
+            min_ys.append(i)
+        
+        for i in range(len(min_ys) - 1):
+            bumpiness = abs(min_ys[i] - min_ys[i+1])
+            max_bumpiness = max(bumpiness, max_bumpiness)
+            total_bumpiness += abs(min_ys[i] - min_ys[i+1])
+
+        return total_bumpiness, max_bumpiness
+            
+    # def get_total_height(self):
+
+    #     total_height = 0
+    #     for i in range(self.col):
+    #         for j in range(self.row):
+    #             if self.board[j,i] >= 1:
+    #                 height = self.row - j
+    #                 break
+    #             height = 0
+    #         total_height += height
+    #     return total_height
+
+    def _height(self):
+        '''Sum and maximum height of the board'''
+        sum_height = 0
+        max_height = 0
+        min_height = self.col
+
+        for col in zip(*self.board):
+            i = 0
+            while i < self.col and col[i] == 0:
+                i += 1
+            height = self.col - i
+            sum_height += height
+            if height > max_height:
+                max_height = height
+            elif height < min_height:
+                min_height = height
+
+        return sum_height, max_height, min_height
 
     def get_current_piece(self):
-        current_piece = self.current_piece.index + self.current_piece.rotation
-        return current_piece
-    
-    def get_next_piece(self):
-        next_piece = self.next_piece.index + self.next_piece.rotation
-        return next_piece
 
-    def _number_of_holes(self, board):
-        '''Number of holes in the board (empty sqquare with at least one block above it)'''
+        current_piece = self.current_piece.index + self.current_piece.rotation
+        return current_piece, self.current_piece.x, self.current_piece.y
+    
+    # def get_next_piece(self):
+
+    #     next_piece = self.next_piece.index + self.next_piece.rotation
+    #     return next_piece
+
+    def _number_of_holes(self):
+        # Number of holes in the board (empty square with at least one block above it)
+
         holes = 0
 
-        for col in zip(*board):
+        for col in zip(*self.board):
             i = 0
             while i < self.row and col[i] != 1:
                 i += 1
@@ -408,10 +432,14 @@ class TetrisEnv(Env):
 
     def get_game_state(self):
         lines = self.rows_removed
-        holes = self._number_of_holes(self.board)
-        bumpiness = self.get_bumpiness()
-        height = self.get_total_height()
-        # current_piece = self.get_current_piece()
+        holes = self._number_of_holes()
+        # bumpiness = self.get_bumpiness()
+        total_bumpiness, max_bumpiness = self._bumpiness()
+        # height = self.get_total_height()
+        sum_height, max_height, min_height = self._height()
+        current_piece, x, y = self.get_current_piece()
         # next_piece = self.get_next_piece()
-        game_state = [lines, holes, bumpiness, height]
+        # game_state = [lines, holes, total_bumpiness, sum_height]
+        game_state = [lines, holes, total_bumpiness, sum_height, current_piece, x, y]
+        # game_state = self.merge(self.board, self.current_piece)
         return game_state
