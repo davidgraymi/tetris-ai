@@ -1,13 +1,13 @@
 import random
 from piece import Piece
-from gym import Env
-from gym.spaces import Discrete, Box
+# from gym import Env
+# from gym.spaces import Discrete, Box
 import numpy as np
 import cv2
 from PIL import Image
 
 
-class TetrisEnv(Env):
+class TetrisEnv:
 
     S = [
             
@@ -130,10 +130,17 @@ class TetrisEnv(Env):
         self.game_over = False
         
          # Actions we can take: left, right, up, down
-        self.action_space = Discrete(4)
-        high = np.array([4, 20, 100, 150, 20, self.col, self.row])
-        low = np.zeros(7)
-        self.observation_space = Box(low, high, dtype=np.int)
+        self.action_space = 4
+        # self.action_space = Discrete(4)
+        # low = np.zeros((self.row, self.col))
+        # high = np.ones((self.row, self.col))
+        # high = np.array([4, 20, 100, 150, 20, self.col, self.row])
+        # low = np.zeros(7)
+        # high = np.array([4, 10, 40, 150])
+        # low = np.zeros(4)
+        # high = np.array([10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20])
+        # low = np.zeros(self.col + 1)
+        # self.observation_space = Box(low, high, dtype=np.int)
     
     def step(self, action):
         #Preform action
@@ -163,14 +170,6 @@ class TetrisEnv(Env):
 
         # return state, reward, game over, info
         return game_state, reward, self.game_over, info
-
-    # def render(self, state):
-    #     #Render
-
-    #     print("\n")
-    #     for x in range(len(state)):
-    #         print(state[x])
-    #     print("\n")
 
     def render(self):
         # Renders the current board
@@ -338,6 +337,9 @@ class TetrisEnv(Env):
         self.rows_removed = 0
         return reward
 
+    def get_action_space(self):
+        return self.action_space
+
     # def get_bumpiness(self):
 
     #     bumpiness = 0
@@ -407,10 +409,23 @@ class TetrisEnv(Env):
 
         return sum_height, max_height, min_height
 
-    def get_current_piece(self):
+    # def _height(self):
+    #     '''Sum and maximum height of the board'''
+    #     heights = np.zeros(self.col)
+    #     for i in range(self.col):
+    #         for j in range(self.row):
+    #             if self.board[j,i] >= 1:
+    #                 height = self.row - j
+    #                 break
+    #             height = 0
+    #         heights[i] = height
+    #     return heights
 
-        current_piece = self.current_piece.index + self.current_piece.rotation
-        return current_piece, self.current_piece.x, self.current_piece.y
+    # def get_current_piece(self):
+
+    #     current_piece = self.current_piece.index + self.current_piece.rotation
+    #     current_piece = np.array([current_piece])
+    #     return current_piece, self.current_piece.x, self.current_piece.y
     
     # def get_next_piece(self):
 
@@ -435,11 +450,15 @@ class TetrisEnv(Env):
         holes = self._number_of_holes()
         # bumpiness = self.get_bumpiness()
         total_bumpiness, max_bumpiness = self._bumpiness()
-        # height = self.get_total_height()
+        # heights = self._height()
         sum_height, max_height, min_height = self._height()
-        current_piece, x, y = self.get_current_piece()
+        # current_piece, x, y = self.get_current_piece()
         # next_piece = self.get_next_piece()
-        # game_state = [lines, holes, total_bumpiness, sum_height]
-        game_state = [lines, holes, total_bumpiness, sum_height, current_piece, x, y]
+        game_state = [lines, holes, total_bumpiness, sum_height]
+        # game_state = [lines, holes, total_bumpiness, sum_height, current_piece, x, y]
         # game_state = self.merge(self.board, self.current_piece)
+        # game_state = np.concatenate((heights, current_piece), axis=None)
         return game_state
+
+        # try the height of each column and the piece
+        # lower the columns range to decrease the size of the Q table
