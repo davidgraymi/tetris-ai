@@ -3,6 +3,7 @@ from piece import Piece
 import numpy as np
 import cv2
 from PIL import Image
+from time import sleep
 
 
 class Tetris:
@@ -120,8 +121,18 @@ class Tetris:
         self.reset()
 
 
+    def log(self, board):
+        print("\n")
+        for row in board:
+            print(row)
+        print("\n")
+
+
     def reset(self):
         self.board = np.zeros((Tetris.HEIGHT, Tetris.WIDTH))
+
+        self.log(self.board)
+
         self.game_over = False
         self.next_piece = self.spawn_shape()
         self.round_start()
@@ -135,13 +146,13 @@ class Tetris:
         self.current_piece.rotation = rotation
 
         # Drop piece until collision
-        while not self._check_collision(self.current_piece.shape[self.current_piece.index][self.current_piece.rotation], [self.self.current_piece.x, self.self.current_piece.y]):
+        while not self._check_collision(self.current_piece.shape[self.current_piece.rotation], [self.current_piece.x, self.current_piece.y]):
             if render:
                 self.render()
                 if render_delay:
                     sleep(render_delay)
             self.current_piece.y += 1
-        self.current_pos[1] -= 1
+        self.current_piece.y -= 1
 
         # Update board and calculate score
         self.board = self.merge(self.current_piece)
@@ -161,9 +172,11 @@ class Tetris:
         '''Starts a new round (new piece)'''
         
         self.current_piece = self.next_piece
-        self.next_piece = self.spawn_shapes()
+        self.next_piece = self.spawn_shape()
 
-        if self._check_collision(self.current_piece):
+        self.log(self.merge(self.current_piece))
+
+        if self._check_collision(self.current_piece.shape[self.current_piece.rotation], [self.current_piece.x, self.current_piece.y]):
             self.game_over = True
 
     
@@ -177,22 +190,37 @@ class Tetris:
         return Piece(letter, index)
 
 
+    def get_game_score(self):
+        return self.score
+
+
     def merge(self, shape):
         #Merges the board and shape into one array
         board = np.copy(self.board)
         x_offset, y_offset = shape.get_offsets()
-        board[shape.y:shape.y+y_offset, shape.x:shape.x+x_offset] = shape.shape[shape.rotation]
+        board[shape.y:shape.y+y_offset, shape.x:shape.x+x_offset] += shape.shape[shape.rotation]
         return board
 
 
     def _check_collision(self, piece, pos):
         '''Check if there is a collision between the current piece and the board'''
 
-        for x, y in piece.shape:
-            x += pos[0]
-            y += pos[1]
-            if x < 0 or x >= Tetris.WIDTH or y < 0 or y >= Tetris.HEIGHT or self.board[y,x] == Tetris.MAP_BLOCK:
-                return True
+        for p in piece:
+            print(p)
+
+        print("x",pos[0])
+        print("y",pos[0])
+
+        for j in range(len(piece)):
+            for i in range(len(piece[j])):
+                piece_block = piece[j][i]
+                x = i + pos[0]
+                y = j + pos[1]
+                if x < 0 or x >= Tetris.WIDTH or y < 0 or y >= Tetris.HEIGHT or (piece_block == self.board[y,x] == 1):
+                    print("YES collision")
+                    return True
+        
+        print("NO collision")
         return False
 
 
@@ -214,9 +242,9 @@ class Tetris:
 
         for col in zip(*board):
             i = 0
-            while i < Tetris.BOARD_HEIGHT and col[i] != Tetris.MAP_BLOCK:
+            while i < Tetris.HEIGHT and col[i] != 1:
                 i += 1
-            holes += len([x for x in col[i+1:] if x == Tetris.MAP_EMPTY])
+            holes += len([x for x in col[i+1:] if x == 0])
 
         return holes
 
@@ -229,7 +257,7 @@ class Tetris:
 
         for col in zip(*board):
             i = 0
-            while i < Tetris.BOARD_HEIGHT and col[i] != Tetris.MAP_BLOCK:
+            while i < Tetris.HEIGHT and col[i] != 1:
                 i += 1
             min_ys.append(i)
         
@@ -245,13 +273,13 @@ class Tetris:
         '''Sum and maximum height of the board'''
         sum_height = 0
         max_height = 0
-        min_height = Tetris.BOARD_HEIGHT
+        min_height = Tetris.HEIGHT
 
         for col in zip(*board):
             i = 0
-            while i < Tetris.BOARD_HEIGHT and col[i] == Tetris.MAP_EMPTY:
+            while i < Tetris.HEIGHT and col[i] == 0:
                 i += 1
-            height = Tetris.BOARD_HEIGHT - i
+            height = Tetris.HEIGHT - i
             sum_height += height
             if height > max_height:
                 max_height = height
@@ -288,21 +316,23 @@ class Tetris:
 
         # For all rotations
         for rotation in range(rotations):
-            piece = Tetris.SHAPES[piece_id][rotation]
-            min_x = min([p[0] for p in piece])
-            max_x = max([p[0] for p in piece])
+            piece = Piece(Tetris.SHAPES[piece_id], piece_id, rotation=rotation)
+            # piece = Tetris.SHAPES[piece_id][rotation]
+            min_x = min([p[0] for p in piece.shape[piece.rotation]])
+            max_x = max([p[0] for p in piece.shape[piece.rotation]])
 
             # For all positions
             for x in range(-min_x, Tetris.WIDTH - max_x):
-                pos = [x, 0]
+                piece.x = x
+                piece.y = 0
 
                 # Drop piece
-                while not self._check_collision(piece, pos):
-                    pos[1] += 1
-                pos[1] -= 1
+                while not self._check_collision(piece.shape[piece.rotation], [piece.x, piece.y]):
+                    piece.y += 1
+                piece.y -= 1
 
                 # Valid move
-                if pos[1] >= 0:
+                if piece.y >= 0:
                     board = self.merge(piece)
                     states[(x, rotation)] = self.get_game_state(board)
 
@@ -313,7 +343,7 @@ class Tetris:
         # Renders the current board
 
         img = [Tetris.COLORS[p] for row in self.merge(self.current_piece) for p in row]
-        img = np.array(img).reshape(self.row, self.col, 3).astype(np.uint8)
+        img = np.array(img).reshape(Tetris.HEIGHT, Tetris.WIDTH, 3).astype(np.uint8)
         img = img[..., ::-1] # Convert RRG to BGR (used by cv2)
         img = Image.fromarray(img, 'RGB')
         img = img.resize((Tetris.WIDTH * 25, Tetris.HEIGHT * 25))

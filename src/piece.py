@@ -1,5 +1,5 @@
 class Piece(object):
-    def __init__(self, x, y, shape, index, rotation=0):
+    def __init__(self, shape, index, x=3, y=0, rotation=0):
         self.x = x
         self.y = y
         self.shape = shape
@@ -13,6 +13,6 @@ class Piece(object):
             self.rotation = 0
     
     def get_offsets(self):
-        x_offset = len(self.shape[self.rotation][0]) - 1
-        y_offset = len(self.shape[self.rotation]) - 1
+        x_offset = len(self.shape[self.rotation][0])
+        y_offset = len(self.shape[self.rotation])
         return x_offset, y_offset

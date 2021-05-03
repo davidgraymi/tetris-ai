@@ -1,5 +1,5 @@
 from dqn_agent import DQNAgent
-from tetris_custom_env import TetrisEnv
+from tetris import Tetris
 from datetime import datetime
 from statistics import mean, median
 import random
@@ -9,10 +9,10 @@ from tqdm import tqdm
 
 # Run dqn with Tetris
 def dqn():
-    env = TetrisEnv()
-    episodes = 2000
+    env = Tetris()
+    episodes = 200
     max_steps = None
-    epsilon_stop_episode = 1500
+    epsilon_stop_episode = int(episodes*0.75)
     mem_size = 20000
     discount = 0.95
     batch_size = 512
@@ -24,7 +24,8 @@ def dqn():
     n_neurons = [32, 32]
     render_delay = None
     activations = ['relu', 'relu', 'linear']
-    filepaths = ["dqn1_0.h5", "dqn1_1.h5", "dqn1_2.h5", "dqn1_3.h5", "dqn1_4.h5", "dqn1_5.h5", "dqn1_6.h5", "dqn1_7.h5", "dqn1_8.h5", "dqn1_9.h5"]
+    dqn_num = 1
+    filepaths = ["tetris-nn_"+str(dqn_num)+"-"+str(i)+".h5" for i in range(0,10)]
     save = len(filepaths)
     save_every = episodes/save
 
