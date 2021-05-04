@@ -10,7 +10,7 @@ from tqdm import tqdm
 # Run dqn with Tetris
 def dqn():
     env = Tetris()
-    episodes = 200
+    episodes = 2000
     max_steps = None
     epsilon_stop_episode = int(episodes*0.75)
     mem_size = 20000
@@ -18,7 +18,7 @@ def dqn():
     batch_size = 512
     epochs = 1
     render_every = 50
-    # log_every = 50
+    log_every = 50
     replay_start_size = 2000
     train_every = 1
     n_neurons = [32, 32]
@@ -28,6 +28,9 @@ def dqn():
     filepaths = ["tetris-nn_"+str(dqn_num)+"-"+str(i)+".h5" for i in range(0,10)]
     save = len(filepaths)
     save_every = episodes/save
+    log_fp = "log.txt"
+    log = open(log_fp,"w")
+    log.write("tetris-nn="+str(n_neurons)+"-mem="+str(mem_size)+"-bs="+str(batch_size)+"-e="+str(epochs)+"-"+str(datetime.now().strftime("%Y%m%d-%H%M%S"))+"\n\n")
 
     agent = DQNAgent(env.get_action_space(),
                      n_neurons=n_neurons, activations=activations,
@@ -74,18 +77,24 @@ def dqn():
             agent.train(batch_size=batch_size, epochs=epochs)
 
         # Save
-        if episode % save_every == 0:
-            agent.save(filepaths[save-10])
+        if episode % save_every == 0 and episodes != 0:
+            if save > 10:
+                agent.save(filepaths[save-11])
             save += 1
 
         # Logs
-        # if log_every and episode and episode % log_every == 0:
-        #     avg_score = mean(scores[-log_every:])
-        #     min_score = min(scores[-log_every:])
-        #     max_score = max(scores[-log_every:])
+        if log_every and episode and episode % log_every == 0:
+            avg_score = mean(scores[-log_every:])
+            min_score = min(scores[-log_every:])
+            max_score = max(scores[-log_every:])
 
-        #     log.log(episode, avg_score=avg_score, min_score=min_score,
-        #             max_score=max_score)
+            logging = "episode: "+str(episode)+", avg_score: "+str(avg_score)+", min_score: "+\
+                 str(min_score)+", max_score: "+str(max_score)+"\n"
+
+            log.write(logging)
+        
+    log.write("----------------------------------------------------------------"+"\n\n")
+    log.close()
 
 
 if __name__ == "__main__":

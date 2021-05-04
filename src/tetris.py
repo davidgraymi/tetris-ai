@@ -121,18 +121,15 @@ class Tetris:
         self.reset()
 
 
-    def log(self, board):
-        print("\n")
-        for row in board:
-            print(row)
-        print("\n")
+    # def log(self, board):
+    #     print("\n")
+    #     for row in board:
+    #         print(row)
+    #     print("\n")
 
 
     def reset(self):
         self.board = np.zeros((Tetris.HEIGHT, Tetris.WIDTH))
-
-        self.log(self.board)
-
         self.game_over = False
         self.next_piece = self.spawn_shape()
         self.round_start()
@@ -174,8 +171,6 @@ class Tetris:
         self.current_piece = self.next_piece
         self.next_piece = self.spawn_shape()
 
-        self.log(self.merge(self.current_piece))
-
         if self._check_collision(self.current_piece.shape[self.current_piece.rotation], [self.current_piece.x, self.current_piece.y]):
             self.game_over = True
 
@@ -205,22 +200,14 @@ class Tetris:
     def _check_collision(self, piece, pos):
         '''Check if there is a collision between the current piece and the board'''
 
-        for p in piece:
-            print(p)
-
-        print("x",pos[0])
-        print("y",pos[0])
-
         for j in range(len(piece)):
             for i in range(len(piece[j])):
                 piece_block = piece[j][i]
                 x = i + pos[0]
                 y = j + pos[1]
-                if x < 0 or x >= Tetris.WIDTH or y < 0 or y >= Tetris.HEIGHT or (piece_block == self.board[y,x] == 1):
-                    print("YES collision")
+                if x < 0 or x >= Tetris.WIDTH or y < 0 or y >= Tetris.HEIGHT or (piece_block == self.board[y][x] == 1):
                     return True
         
-        print("NO collision")
         return False
 
 
