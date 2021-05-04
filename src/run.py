@@ -25,7 +25,7 @@ def dqn():
     render_delay = None
     activations = ['relu', 'relu', 'linear']
     dqn_num = 1
-    filepaths = ["tetris-nn_"+str(dqn_num)+"-"+str(i)+".h5" for i in range(0,10)]
+    filepaths = ["tetris-nn_"+str(dqn_num)+"-"+str(i) for i in range(0,10)]
     save = len(filepaths)
     save_every = episodes/save
     log_fp = "log.txt"
@@ -77,13 +77,12 @@ def dqn():
             agent.train(batch_size=batch_size, epochs=epochs)
 
         # Save
-        if episode % save_every == 0 and episodes != 0:
-            if save > 10:
-                agent.save(filepaths[save-11])
+        if (episode+1 % save_every) == 0:
+            agent.save(filepaths[save-11])
             save += 1
 
         # Logs
-        if log_every and episode and episode % log_every == 0:
+        if log_every and episode and (episode+1 % log_every == 0):
             avg_score = mean(scores[-log_every:])
             min_score = min(scores[-log_every:])
             max_score = max(scores[-log_every:])
@@ -93,7 +92,7 @@ def dqn():
 
             log.write(logging)
         
-    log.write("----------------------------------------------------------------"+"\n\n")
+    log.write("------------------------------------------------------------------------------------------------"+"\n\n")
     log.close()
 
 

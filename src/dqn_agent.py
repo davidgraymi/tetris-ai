@@ -143,7 +143,7 @@ class DQNAgent:
                 self.epsilon -= self.epsilon_decay
     
     def save(self, fp):
-        save_model(self.model, fp)
+        self.model.save(fp)
 
     def load(self, fp):
-       return load_model(fp)
+       self.model = load_model(fp)

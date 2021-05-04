@@ -292,7 +292,7 @@ class Tetris:
         '''Get all possible next states'''
         states = {}
         piece_id = self.current_piece.index
-        rotations = len(self.current_piece.shape) - 1
+        rotations = len(self.current_piece.shape)
 
         # if piece_id == 3: 
         #     rotations = [0]
@@ -321,7 +321,9 @@ class Tetris:
                 # Valid move
                 if piece.y >= 0:
                     board = self.merge(piece)
+                    # Add a way to return reward
                     states[(x, rotation)] = self.get_game_state(board)
+
 
         return states
 
