@@ -17,7 +17,7 @@ n_neurons = [32, 32]
 render_delay = None
 activations = ['relu', 'relu', 'linear']
 dqn_num = 1
-filepaths = ["tetris-nn_"+str(dqn_num)+"-"+str(i) for i in range(0,10)]
+filepaths = ["tetris-nn_"+str(dqn_num)+"-"+str(i)+".h5" for i in range(0,10)]
 # save = len(filepaths)
 # save_every = episodes/save
 
@@ -38,9 +38,9 @@ for episode in range(episodes):
     # Game
     while not done and (not max_steps or steps < max_steps):
         next_states = env.get_next_states()
-        print(next_states)
+        # print(next_states)
         best_state = agent.best_state(next_states.values())
-        print(best_state)
+        # print(best_state)
         
         best_action = None
         for action, state in next_states.items():

@@ -24,13 +24,13 @@ def dqn():
     n_neurons = [32, 32]
     render_delay = None
     activations = ['relu', 'relu', 'linear']
-    dqn_num = 1
-    filepaths = ["tetris-nn_"+str(dqn_num)+"-"+str(i) for i in range(0,10)]
+    dqn_num = 2
+    filepaths = ["tetris-nn_"+str(dqn_num)+"-"+str(i)+".h5" for i in range(0,10)]
     save = len(filepaths)
     save_every = episodes/save
     log_fp = "log.txt"
-    log = open(log_fp,"w")
-    log.write("tetris-nn="+str(n_neurons)+"-mem="+str(mem_size)+"-bs="+str(batch_size)+"-e="+str(epochs)+"-"+str(datetime.now().strftime("%Y%m%d-%H%M%S"))+"\n\n")
+    log = open(log_fp,"a")
+    log.write("\ntetris-nn="+str(n_neurons)+"-mem="+str(mem_size)+"-bs="+str(batch_size)+"-e="+str(epochs)+"-"+str(datetime.now().strftime("%Y%m%d-%H%M%S"))+"\n\n")
 
     agent = DQNAgent(env.get_action_space(),
                      n_neurons=n_neurons, activations=activations,
@@ -77,8 +77,8 @@ def dqn():
             agent.train(batch_size=batch_size, epochs=epochs)
 
         # Save
-        if (episode+1 % save_every) == 0:
-            agent.save(filepaths[save-11])
+        if (episode+1) % save_every == 0:
+            agent.save(filepaths[save-10])
             save += 1
 
         # Logs
@@ -92,7 +92,7 @@ def dqn():
 
             log.write(logging)
         
-    log.write("------------------------------------------------------------------------------------------------"+"\n\n")
+    log.write("------------------------------------------------------------------------------------------------"+"\n")
     log.close()
 
 
