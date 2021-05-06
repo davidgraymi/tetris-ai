@@ -10,15 +10,11 @@ mem_size = 20000
 discount = 0.95
 batch_size = 512
 epochs = 1
-# log_every = 50
 replay_start_size = 2000
-# train_every = 1
 n_neurons = [32, 32]
 render_delay = None
 activations = ['relu', 'relu', 'linear']
-filepath = "tetris-nn_2-9.h5"
-# save = len(filepaths)
-# save_every = episodes/save
+filepath = "tetris-nn_4-8.h5"
 
 agent = DQNAgent(env.get_action_space(),
                      n_neurons=n_neurons, activations=activations, epsilon=0,
@@ -47,7 +43,7 @@ for episode in range(episodes):
                 best_action = action
                 break
 
-        reward, done = env.play(best_action[0], best_action[1], render=True,
+        reward, done = env.step(best_action[0], best_action[1], render=True,
                                 render_delay=render_delay)
         
         # agent.add_to_memory(current_state, next_states[best_action], reward, done)

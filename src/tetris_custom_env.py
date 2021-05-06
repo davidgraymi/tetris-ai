@@ -113,6 +113,7 @@ class TetrisEnv:
         3: (0, 167, 247),
     }
 
+
     def __init__(self, render=False):
 
         self.renderer = render
@@ -129,8 +130,9 @@ class TetrisEnv:
         self.score = 0
         self.game_over = False
         
-         # Actions we can take: left, right, up, down
+        # Actions we can take: left, right, up, down
         self.action_space = 4
+
         # self.action_space = Discrete(4)
         # low = np.zeros((self.row, self.col))
         # high = np.ones((self.row, self.col))
@@ -142,6 +144,7 @@ class TetrisEnv:
         # low = np.zeros(self.col + 1)
         # self.observation_space = Box(low, high, dtype=np.int)
     
+
     def step(self, action):
         #Preform action
 
@@ -163,13 +166,14 @@ class TetrisEnv:
 
         info = {}
 
-        game_state = self.get_game_state()
+        game_state = self.get_game_state(self.board, self.rows_removed)
 
         reward = self.get_reward()
         self.score += reward
 
         # return state, reward, game over, info
         return game_state, reward, self.game_over, info
+
 
     def render(self):
         # Renders the current board
@@ -184,6 +188,7 @@ class TetrisEnv:
         cv2.imshow('image', np.array(img))
         cv2.waitKey(1)
 
+
     def reset(self):
         #Reset
 
@@ -195,46 +200,82 @@ class TetrisEnv:
         self.rows_removed = 0
         self.score = 0
         self.game_over = False
-        return self.get_game_state()
+        return self.get_game_state(self.board, self.rows_removed)
+
+
+    def get_next_states(self):
+        states = {}
+
+        for i in range(4):
+            board = np.copy(self.board)
+            temp = Piece(self.current_piece.x, self.current_piece.y, self.current_piece.shape, self.current_piece.index, self.current_piece.rotation)
+            if i == 0:
+                temp.x -= 1
+                if not self.is_valid_position(board, temp):
+                    temp.x += 1
+            elif i == 1:
+                temp.x += 1
+                if not self.is_valid_position(board, temp):
+                    temp.x -= 1
+            elif i == 2:
+                temp.y += 1
+                if not self.is_valid_position(board, temp):
+                    # collision! lock piece in place, check for complete rows, spawn a new shape, then check if game is over
+                    temp.y -= 1
+                    board = self.merge(board, temp)
+                    block_placed += 1
+                    board, rows_removed = self.fix_rows(board)
+                    game_over = self.check_lost()
+            elif i == 3:
+                temp2 = Piece(self.current_piece.x, self.current_piece.y, self.current_piece.shape, self.current_piece.index, self.current_piece.rotation)
+                temp2.rotate_clockwise()
+                if self.is_valid_position(board, temp2):
+                    temp.rotate_clockwise()
+            
+
 
 
     def move_left(self):
         #Move left
 
         self.current_piece.x -= 1
-        if not self.is_valid_position(self.current_piece):
+        if not self.is_valid_position(self.board, self.current_piece):
             self.current_piece.x += 1
     
+
     def move_right(self):
         #Move right
 
         self.current_piece.x += 1
-        if not self.is_valid_position(self.current_piece):
+        if not self.is_valid_position(self.board, self.current_piece):
             self.current_piece.x -= 1
+
 
     def move_down(self):
         #Move down
 
         self.current_piece.y += 1
-        if not self.is_valid_position(self.current_piece):
+        if not self.is_valid_position(self.board, self.current_piece):
             # collision! lock piece in place, check for complete rows, spawn a new shape, then check if game is over
             self.current_piece.y -= 1
             self.board = self.merge(self.board, self.current_piece)
             self.block_placed += 1
-            self.fix_rows()
-            self.check_lost()
+            self.board, self.rows_removed = self.fix_rows(self.board)
+            self.game_over = self.check_lost(self.board)
             self.current_piece = self.next_piece
             self.next_piece = self.spawn_shape()
+
 
     def rotate(self):
         #Rotate
 
         temp = Piece(self.current_piece.x, self.current_piece.y, self.current_piece.shape, self.current_piece.index, self.current_piece.rotation)
         temp.rotate_clockwise()
-        if self.is_valid_position(temp):
+        if self.is_valid_position(self.board, temp):
             self.current_piece.rotate_clockwise()
 
-    def is_valid_position(self, shape):
+
+    def is_valid_position(self, board, shape):
         #Checks if the position of the current piece is valid
 
         x_offset, y_offset = shape.get_offsets()
@@ -249,13 +290,14 @@ class TetrisEnv:
         if right_edge > 9:
             return False
         
-        merged = self.merge(self.board, shape)
+        merged = self.merge(board, shape)
 
         for y in range(self.row):
             for x in range(self.col):
                 if merged[y][x] > 1:
                     return False
         return True
+
 
     def merge(self, board, shape):
         #Merges the board and shape into one array
@@ -282,22 +324,30 @@ class TetrisEnv:
     #             if row_count == 9:
     #                 self.board = self.remove(i)
 
-    def fix_rows(self):
+
+    def fix_rows(self, board):
         # Checks if a complete row exists
 
+        rows_removed = 0
         for i in range(self.row):
-            if 0 not in self.board[i]:
-                self.remove(i)
+            if 0 not in board[i]:
+                board = self.remove(i, board)
+                rows_removed += 1
 
-    def remove(self, index):
+        return board, rows_removed
+
+
+    def remove(self, index, board):
         #Removes row at index and shifts above rows down
 
-        self.rows_removed += 1
         while index >= 0:
-            row = np.copy(self.board[index-1])
-            self.board[index] = row
+            row = np.copy(board[index-1])
+            board[index] = row
             index -= 1
-        self.board[0] = np.zeros(self.col)
+        board[0] = np.zeros(self.col)
+
+        return board
+
 
     # def remove(self, index):
     #     #Removes row at index and shifts above rows down
@@ -311,12 +361,16 @@ class TetrisEnv:
     #     board[0] = np.zeros(self.col)
     #     return board
     
-    def check_lost(self):
+
+    def check_lost(self, board):
         #Checks if the concrete pieces have reaches the top of the board
 
-        top_row = np.copy(self.board[0])
+        top_row = np.copy(board[0])
         if max(top_row) >= 1:
-            self.game_over = True
+            return True
+        else:
+            return False
+
 
     def spawn_shape(self):
         #Spawns a new shape at the top of the board
@@ -327,7 +381,8 @@ class TetrisEnv:
         # letter = random.choice(self.shapes)
         return Piece(4, 0, letter, index)
 
-    def get_reward(self):
+
+    def get_reward(self, block_placed, rows_removed):
         # reward function
 
         reward = self.block_placed + (self.rows_removed**2 * self.col)
@@ -337,35 +392,18 @@ class TetrisEnv:
         self.rows_removed = 0
         return reward
 
+
     def get_action_space(self):
         return self.action_space
 
-    # def get_bumpiness(self):
 
-    #     bumpiness = 0
-    #     for i in range(self.col-1):
-    #         for j in range(self.row):
-    #             if self.board[j,i] >= 1:
-    #                 height_row_1 = self.row - j
-    #                 break
-    #             height_row_1 = 0
-    #         for j in range(self.row):
-    #             if self.board[j,i+1] >= 1:
-    #                 height_row_2 = self.row - j
-    #                 break
-    #             height_row_2 = 0
-    #         difference = abs(height_row_1 - height_row_2)
-    #         # print(height_row_1, "-", height_row_2, "=", difference)
-    #         bumpiness += difference
-    #     return bumpiness
-
-    def _bumpiness(self):
+    def _bumpiness(self, board):
         '''Sum of the differences of heights between pair of columns'''
         total_bumpiness = 0
         max_bumpiness = 0
         min_ys = []
 
-        for col in zip(*self.board):
+        for col in zip(*board):
             i = 0
             while i < self.row and col[i] != 1:
                 i += 1
@@ -377,26 +415,15 @@ class TetrisEnv:
             total_bumpiness += abs(min_ys[i] - min_ys[i+1])
 
         return total_bumpiness, max_bumpiness
-            
-    # def get_total_height(self):
 
-    #     total_height = 0
-    #     for i in range(self.col):
-    #         for j in range(self.row):
-    #             if self.board[j,i] >= 1:
-    #                 height = self.row - j
-    #                 break
-    #             height = 0
-    #         total_height += height
-    #     return total_height
 
-    def _height(self):
+    def _height(self, board):
         '''Sum and maximum height of the board'''
         sum_height = 0
         max_height = 0
         min_height = self.col
 
-        for col in zip(*self.board):
+        for col in zip(*board):
             i = 0
             while i < self.col and col[i] == 0:
                 i += 1
@@ -409,35 +436,13 @@ class TetrisEnv:
 
         return sum_height, max_height, min_height
 
-    # def _height(self):
-    #     '''Sum and maximum height of the board'''
-    #     heights = np.zeros(self.col)
-    #     for i in range(self.col):
-    #         for j in range(self.row):
-    #             if self.board[j,i] >= 1:
-    #                 height = self.row - j
-    #                 break
-    #             height = 0
-    #         heights[i] = height
-    #     return heights
 
-    # def get_current_piece(self):
-
-    #     current_piece = self.current_piece.index + self.current_piece.rotation
-    #     current_piece = np.array([current_piece])
-    #     return current_piece, self.current_piece.x, self.current_piece.y
-    
-    # def get_next_piece(self):
-
-    #     next_piece = self.next_piece.index + self.next_piece.rotation
-    #     return next_piece
-
-    def _number_of_holes(self):
+    def _number_of_holes(self, board):
         # Number of holes in the board (empty square with at least one block above it)
 
         holes = 0
 
-        for col in zip(*self.board):
+        for col in zip(*board):
             i = 0
             while i < self.row and col[i] != 1:
                 i += 1
@@ -445,13 +450,14 @@ class TetrisEnv:
 
         return holes
 
-    def get_game_state(self):
-        lines = self.rows_removed
-        holes = self._number_of_holes()
+
+    def get_game_state(self, board, rows_removed):
+        lines = rows_removed
+        holes = self._number_of_holes(board)
         # bumpiness = self.get_bumpiness()
-        total_bumpiness, max_bumpiness = self._bumpiness()
+        total_bumpiness, max_bumpiness = self._bumpiness(board)
         # heights = self._height()
-        sum_height, max_height, min_height = self._height()
+        sum_height, max_height, min_height = self._height(board)
         # current_piece, x, y = self.get_current_piece()
         # next_piece = self.get_next_piece()
         game_state = [lines, holes, total_bumpiness, sum_height]

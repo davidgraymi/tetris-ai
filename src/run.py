@@ -3,8 +3,8 @@ from tetris import Tetris
 from datetime import datetime
 from statistics import mean, median
 import random
-# from logs import CustomTensorBoard
 from tqdm import tqdm
+import pandas as pd
         
 
 # Run dqn with Tetris
@@ -18,27 +18,26 @@ def dqn():
     batch_size = 512
     epochs = 1
     render_every = 50
-    log_every = 50
+    log_every = 25
     replay_start_size = 2000
     train_every = 1
     n_neurons = [32, 32]
     render_delay = None
     activations = ['relu', 'relu', 'linear']
-    dqn_num = 2
+    dqn_num = "Test"
     filepaths = ["tetris-nn_"+str(dqn_num)+"-"+str(i)+".h5" for i in range(0,10)]
     save = len(filepaths)
     save_every = episodes/save
     log_fp = "log.txt"
+    csv_fp = "dqn_"+dqn_num+"_training.csv"
     log = open(log_fp,"a")
     log.write("\ntetris-nn="+str(n_neurons)+"-mem="+str(mem_size)+"-bs="+str(batch_size)+"-e="+str(epochs)+"-"+str(datetime.now().strftime("%Y%m%d-%H%M%S"))+"\n\n")
+    log.close()
 
     agent = DQNAgent(env.get_action_space(),
                      n_neurons=n_neurons, activations=activations,
                      epsilon_stop_episode=epsilon_stop_episode, mem_size=mem_size,
                      discount=discount, replay_start_size=replay_start_size)
-
-    # log_dir = f'logs/tetris-nn={str(n_neurons)}-mem={mem_size}-bs={batch_size}-e={epochs}-{datetime.now().strftime("%Y%m%d-%H%M%S")}'
-    # log = CustomTensorBoard(log_dir=log_dir)
 
     scores = []
 
@@ -63,7 +62,7 @@ def dqn():
                     best_action = action
                     break
 
-            reward, done = env.play(best_action[0], best_action[1], render=render,
+            reward, done = env.step(best_action[0], best_action[1], render=render,
                                     render_delay=render_delay)
             
             agent.add_to_memory(current_state, next_states[best_action], reward, done)
@@ -82,18 +81,23 @@ def dqn():
             save += 1
 
         # Logs
-        if log_every and episode and (episode+1 % log_every == 0):
+        if log_every and episode and (episode+1) % log_every == 0:
             avg_score = mean(scores[-log_every:])
             min_score = min(scores[-log_every:])
             max_score = max(scores[-log_every:])
 
+            log = open(log_fp,"a")
             logging = "episode: "+str(episode)+", avg_score: "+str(avg_score)+", min_score: "+\
                  str(min_score)+", max_score: "+str(max_score)+"\n"
-
             log.write(logging)
-        
-    log.write("------------------------------------------------------------------------------------------------"+"\n")
+            log.close()
+    
+    log = open(log_fp,"a")
+    log.write("\n------------------------------------------------------------------------------------------------"+"\n")
     log.close()
+
+    df = pd.DataFrame(scores)
+    df.to_csv(csv_fp)
 
 
 if __name__ == "__main__":
