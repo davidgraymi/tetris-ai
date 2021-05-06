@@ -16,8 +16,7 @@ replay_start_size = 2000
 n_neurons = [32, 32]
 render_delay = None
 activations = ['relu', 'relu', 'linear']
-dqn_num = 1
-filepaths = ["tetris-nn_"+str(dqn_num)+"-"+str(i)+".h5" for i in range(0,10)]
+filepath = "tetris-nn_2-9.h5"
 # save = len(filepaths)
 # save_every = episodes/save
 
@@ -26,7 +25,7 @@ agent = DQNAgent(env.get_action_space(),
                      epsilon_stop_episode=epsilon_stop_episode, mem_size=mem_size,
                      discount=discount, replay_start_size=replay_start_size)
 
-agent.load(filepaths[-2])
+agent.load(filepath)
 
 scores = []
 
@@ -55,4 +54,6 @@ for episode in range(episodes):
         current_state = next_states[best_action]
         steps += 1
 
-    scores.append(env.get_game_score())
+    score = env.get_game_score()
+    print(score)
+    scores.append(score)
