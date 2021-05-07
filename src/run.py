@@ -10,7 +10,7 @@ import pandas as pd
 # Run dqn with Tetris
 def dqn():
     env = Tetris()
-    episodes = 2000
+    episodes = 500
     max_steps = None
     epsilon_stop_episode = int(episodes*0.75)
     mem_size = 20000
@@ -24,12 +24,13 @@ def dqn():
     n_neurons = [32, 32]
     render_delay = None
     activations = ['relu', 'relu', 'linear']
-    dqn_num = "Test"
-    filepaths = ["tetris-nn_"+str(dqn_num)+"-"+str(i)+".h5" for i in range(0,10)]
+    dqn_num = 3
+    filepaths = "tetris-nn_"+str(dqn_num)+"-.h5"
+    # filepaths = ["tetris-nn_"+str(dqn_num)+"-"+str(i)+".h5" for i in range(0,10)]
     save = len(filepaths)
     save_every = episodes/save
     log_fp = "log.txt"
-    csv_fp = "dqn_"+dqn_num+"_training.csv"
+    csv_fp = "dqn_"+str(dqn_num)+"_training.csv"
     log = open(log_fp,"a")
     log.write("\ntetris-nn="+str(n_neurons)+"-mem="+str(mem_size)+"-bs="+str(batch_size)+"-e="+str(epochs)+"-"+str(datetime.now().strftime("%Y%m%d-%H%M%S"))+"\n\n")
     log.close()
@@ -77,7 +78,8 @@ def dqn():
 
         # Save
         if (episode+1) % save_every == 0:
-            agent.save(filepaths[save-10])
+            agent.save(filepaths)
+            # agent.save(filepaths[save-10])
             save += 1
 
         # Logs
@@ -87,7 +89,7 @@ def dqn():
             max_score = max(scores[-log_every:])
 
             log = open(log_fp,"a")
-            logging = "episode: "+str(episode)+", avg_score: "+str(avg_score)+", min_score: "+\
+            logging = "episode: "+str(episode+1)+", avg_score: "+str(avg_score)+", min_score: "+\
                  str(min_score)+", max_score: "+str(max_score)+"\n"
             log.write(logging)
             log.close()

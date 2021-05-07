@@ -14,20 +14,7 @@ import random
 # action for a particular state.
 class DQNAgent:
 
-    '''Deep Q Learning Agent + Maximin
-    Args:
-        state_size (int): Size of the input domain
-        mem_size (int): Size of the replay buffer
-        discount (float): How important is the future rewards compared to the immediate ones [0,1]
-        epsilon (float): Exploration (probability of random values given) value at the start
-        epsilon_min (float): At what epsilon value the agent stops decrementing it
-        epsilon_stop_episode (int): At what episode the agent stops decreasing the exploration variable
-        n_neurons (list(int)): List with the number of neurons in each inner layer
-        activations (list): List with the activations used in each inner layer, as well as the output
-        loss (obj): Loss function
-        optimizer (obj): Otimizer used
-        replay_start_size: Minimum size needed to train
-    '''
+    '''Q learning DQN network which predicts the best state for the game'''
 
     def __init__(self, state_size, mem_size=10000, discount=0.95,
                  epsilon=1, epsilon_min=0, epsilon_stop_episode=500,
@@ -53,7 +40,7 @@ class DQNAgent:
 
 
     def _build_model(self):
-        '''Builds a Keras deep neural network model'''
+        '''The base of the neural network'''
         model = Sequential()
         model.add(Dense(self.n_neurons[0], input_dim=self.state_size, activation=self.activations[0]))
 
@@ -68,22 +55,22 @@ class DQNAgent:
 
 
     def add_to_memory(self, current_state, next_state, reward, done):
-        '''Adds a play to the replay memory buffer'''
+        '''Adding move to memory'''
         self.memory.append((current_state, next_state, reward, done))
 
 
     def random_value(self):
-        '''Random score for a certain action'''
+        '''Given random reward'''
         return random.random()
 
 
     def predict_value(self, state):
-        '''Predicts the score for a certain state'''
+        '''Score prediction for a game state'''
         return self.model.predict(state)[0]
 
 
     def act(self, state):
-        '''Returns the expected score of a certain state'''
+        '''Gives an expected reward'''
         state = np.reshape(state, [1, self.state_size])
         if random.random() <= self.epsilon:
             return self.random_value()
@@ -92,7 +79,7 @@ class DQNAgent:
 
 
     def best_state(self, states):
-        '''Returns the best state for a given collection of states'''
+        '''Gives the best state out of a multitude of game states'''
         max_value = None
         best_state = None
 
@@ -110,7 +97,7 @@ class DQNAgent:
 
 
     def train(self, batch_size=32, epochs=3):
-        '''Trains the agent'''
+        '''Training'''
         n = len(self.memory)
     
         if n >= self.replay_start_size and n >= batch_size:
@@ -143,7 +130,9 @@ class DQNAgent:
                 self.epsilon -= self.epsilon_decay
     
     def save(self, fp):
+        '''Saving'''
         self.model.save(fp)
 
     def load(self, fp):
-       self.model = load_model(fp)
+        '''Load the model'''
+        self.model = load_model(fp)
